@@ -636,38 +636,49 @@ def _dibujar_cargas(ax, posiciones: np.ndarray, cargas: np.ndarray,
 
 def _plano_cartesiano_gif(ax) -> None:
     """
-    Agrega ejes cartesianos (x=0, y=0) y cuadrícula cada 20 u. a un frame de GIF.
-    Ejes principales en azul claro; cuadrícula fina en azul oscuro.
+    Agrega ejes cartesianos (x=0, y=0) a un frame de GIF.
+    Ejes blancos brillantes. Grid mayor blanco cada 20 u.a. +
+    grid fino blanco sutil cada 1 u.a.
     """
-    ax.axhline(0, color='#5599cc', lw=0.9, alpha=0.7, zorder=2)
-    ax.axvline(0, color='#5599cc', lw=0.9, alpha=0.7, zorder=2)
-    ticks = np.arange(int(DOMAIN[0]), int(DOMAIN[1]) + 1, 20)
-    ax.set_xticks(ticks)
-    ax.set_yticks(ticks)
-    ax.tick_params(colors='#aaaaaa', labelsize=6)
-    ax.grid(True, color='#1e3a5f', lw=0.5, alpha=0.65)
+    ax.axhline(0, color='white', lw=1.2, alpha=0.88, zorder=3)
+    ax.axvline(0, color='white', lw=1.2, alpha=0.88, zorder=3)
+    ticks_may = np.arange(int(DOMAIN[0]), int(DOMAIN[1]) + 1, 20)
+    ticks_fin = np.arange(int(DOMAIN[0]), int(DOMAIN[1]) + 1, 1)
+    ax.set_xticks(ticks_may)
+    ax.set_yticks(ticks_may)
+    ax.set_xticks(ticks_fin, minor=True)
+    ax.set_yticks(ticks_fin, minor=True)
+    ax.tick_params(axis='both', which='major', colors='white', labelsize=8)
+    ax.tick_params(axis='both', which='minor', length=0, labelsize=0)
+    ax.grid(True, which='major', color='white', lw=0.50, alpha=0.25, zorder=1)
+    ax.grid(True, which='minor', color='white', lw=0.16, alpha=0.08, zorder=1)
 
 
 def _plano_cartesiano_png(ax) -> None:
     """
     Plano cartesiano profesional para figuras PNG estáticas.
-    Ejes x=0/y=0 resaltados, grid principal cada 20 u., grid menor cada 10 u.
+    Ejes x=0/y=0 en blanco brillante. Grid mayor (blanco, cada 20 u.) +
+    grid fino (blanco muy sutil, cada 1 u.) sobre cualquier fondo.
     """
-    ax.axhline(0, color='#7ab8e8', lw=1.2, alpha=0.85, zorder=2)
-    ax.axvline(0, color='#7ab8e8', lw=1.2, alpha=0.85, zorder=2)
+    # Ejes cartesianos principales: blanco brillante y bien visible
+    ax.axhline(0, color='white', lw=1.6, alpha=0.90, zorder=3)
+    ax.axvline(0, color='white', lw=1.6, alpha=0.90, zorder=3)
+    # Ticks mayores cada 20 u.a., menores cada 1 u.a.
     ticks_may = np.arange(int(DOMAIN[0]), int(DOMAIN[1]) + 1, 20)
+    ticks_fin = np.arange(int(DOMAIN[0]), int(DOMAIN[1]) + 1, 1)
     ax.set_xticks(ticks_may)
     ax.set_yticks(ticks_may)
-    ticks_men = np.arange(int(DOMAIN[0]), int(DOMAIN[1]) + 1, 10)
-    ax.set_xticks(ticks_men, minor=True)
-    ax.set_yticks(ticks_men, minor=True)
-    ax.tick_params(axis='both', which='major', colors='#bbbbbb', labelsize=9, length=4)
-    ax.tick_params(axis='both', which='minor', colors='#555555', labelsize=0, length=2)
-    ax.grid(True, which='major', color='#1a3050', lw=0.6, alpha=0.80)
-    ax.grid(True, which='minor', color='#15263d', lw=0.3, alpha=0.50)
+    ax.set_xticks(ticks_fin, minor=True)
+    ax.set_yticks(ticks_fin, minor=True)
+    ax.tick_params(axis='both', which='major', colors='white', labelsize=9, length=4)
+    ax.tick_params(axis='both', which='minor', colors='#aaaaaa', labelsize=0, length=1)
+    # Grid mayor blanco (visible) + grid fino blanco (muy sutil, papel milimetrado)
+    ax.grid(True, which='major', color='white', lw=0.55, alpha=0.28, zorder=1)
+    ax.grid(True, which='minor', color='white', lw=0.18, alpha=0.09, zorder=1)
     for sp in ax.spines.values():
-        sp.set_edgecolor('#3b5a7d')
+        sp.set_edgecolor('white')
         sp.set_linewidth(1.0)
+        sp.set_alpha(0.60)
 
 
 def _fig_a_pil(fig) -> object:
@@ -758,43 +769,43 @@ def _frame_potencial(posiciones: np.ndarray, cargas: np.ndarray,
 def _frame_campo(posiciones: np.ndarray, cargas: np.ndarray,
                  U: float, iteracion: int) -> object:
     """
-    Genera un frame PIL del mapa |E(x,y)| + flechas de dirección (sin disco).
+    Genera un frame PIL con flujo direccional del campo eléctrico.
 
-    Fondo inferno = intensidad del campo en escala log.
-    Flechas blancas normalizadas = dirección del campo eléctrico.
+    Fondo: potencial V(x,y) en RdBu_r (rojo = zona +, azul = zona −).
+    Líneas de flujo: streamplot coloreado por log(1+|E|) en YlOrRd,
+    idéntico al subplot 3 de analisis_avanzado.png.
     """
     from matplotlib.figure import Figure
     x1 = np.linspace(DOMAIN[0], DOMAIN[1], GIF_GRID)
     y1 = np.linspace(DOMAIN[0], DOMAIN[1], GIF_GRID)
     X, Y   = np.meshgrid(x1, y1)
     Ex, Ey = calcular_campo_electrico(X, Y, posiciones, cargas)
+    V      = calcular_potencial(X, Y, posiciones, cargas)
     Emag   = np.hypot(Ex, Ey)
-    En     = np.maximum(Emag, 1e-12)
 
     fig = Figure(figsize=GIF_SIZE)
     fig.patch.set_facecolor('#0d1b2a')
     ax = fig.add_subplot(111)
     ax.set_facecolor('#0d1b2a')
 
-    ax.imshow(np.log1p(Emag),
-              extent=[DOMAIN[0], DOMAIN[1], DOMAIN[0], DOMAIN[1]],
-              origin='lower', cmap='inferno', aspect='equal',
-              interpolation='bilinear')
+    # Fondo: potencial V(x,y) — mismo estilo que sub-3 de analisis_avanzado
+    ax.contourf(X, Y, np.clip(V, -5, 5),
+                levels=40, cmap='RdBu_r', alpha=0.88)
 
-    sk = 2  # submuestreo: 1 de cada sk filas/columnas
-    ax.quiver(X[::sk, ::sk], Y[::sk, ::sk],
-              Ex[::sk, ::sk] / En[::sk, ::sk],
-              Ey[::sk, ::sk] / En[::sk, ::sk],
-              color='white', alpha=0.42, scale=3, width=0.004)
+    # Líneas de flujo del campo eléctrico (streamplot direccional)
+    Emag_s = np.maximum(Emag, 1e-12)
+    ax.streamplot(x1, y1, Ex, Ey,
+                  color=np.log1p(Emag_s), cmap='YlOrRd',
+                  density=1.0, linewidth=1.0, arrowsize=1.2)
 
     _dibujar_cargas(ax, posiciones, cargas, radio=R_DIBUJO_PNG)
 
     _plano_cartesiano_gif(ax)
     ax.set_xlim(DOMAIN); ax.set_ylim(DOMAIN)
-    ax.set_title(f'Campo |E(x,y)|  |  Iter {iteracion}  |  U={U:+.3f}',
-                 color='white', fontsize=9, fontweight='bold')
-    ax.set_xlabel('x', color='#aaaaaa', fontsize=8)
-    ax.set_ylabel('y', color='#aaaaaa', fontsize=8)
+    ax.set_title(f'Campo E — Flujo Direccional  |  Iter {iteracion}  |  U={U:+.3f}',
+                 color='white', fontsize=12, fontweight='bold')
+    ax.set_xlabel('x [u.a.]', color='#aaaaaa', fontsize=11)
+    ax.set_ylabel('y [u.a.]', color='#aaaaaa', fontsize=11)
     ax.set_aspect('equal')
     for sp in ax.spines.values():
         sp.set_edgecolor('#2d4a6d')
@@ -1052,33 +1063,30 @@ def visualizar_estado_completo(sistema: SistemaCargas,
     ax2.set_aspect('equal')
 
     # ────────────────────────────────────────────────────────────
-    # SUB 3: Magnitud del campo |E(x, y)| + quiver
+    # SUB 3: Campo E — flujo direccional (streamplot) + V(x,y)
     # ────────────────────────────────────────────────────────────
     ax3 = fig.add_subplot(gs[0, 2])
-    _estilo(ax3, 'Campo Electrico  |E(x, y)|  +  direccion')
+    _estilo(ax3, 'Campo Electrico  E(x,y)  —  Flujo Direccional')
 
-    nq = 60
-    xq = np.linspace(DOMAIN[0], DOMAIN[1], nq)
-    yq = np.linspace(DOMAIN[0], DOMAIN[1], nq)
-    Xq, Yq = np.meshgrid(xq, yq)
-    Ex, Ey  = calcular_campo_electrico(Xq, Yq, pos, q)
-    Emag    = np.hypot(Ex, Ey)
+    # Fondo: potencial V(x,y) reutilizando la malla de alta resolución ya calculada
+    cf3 = ax3.contourf(X, Y, np.clip(V, -5, 5),
+                       levels=60, cmap='RdBu_r', alpha=0.88)
+    _colorbar(fig, cf3, ax3, 'V [u.a.]')
 
-    cf3 = ax3.contourf(Xq, Yq, np.log1p(Emag), levels=50,
-                        cmap='inferno', alpha=0.88)
-    _colorbar(fig, cf3, ax3, 'ln(1+|E|)')
+    # Streamplot en malla propia (resolución equilibrada calidad/velocidad)
+    ns3      = 30
+    xs3      = np.linspace(DOMAIN[0], DOMAIN[1], ns3)
+    ys3      = np.linspace(DOMAIN[0], DOMAIN[1], ns3)
+    Xs3, Ys3 = np.meshgrid(xs3, ys3)
+    Ex3, Ey3 = calcular_campo_electrico(Xs3, Ys3, pos, q)
+    Emag3_s  = np.maximum(np.hypot(Ex3, Ey3), 1e-12)
+    ax3.streamplot(xs3, ys3, Ex3, Ey3,
+                   color=np.log1p(Emag3_s), cmap='YlOrRd',
+                   density=1.3, linewidth=1.0, arrowsize=1.2)
 
-    # Flechas de dirección (normalizadas)
-    sk = 2
-    En = np.maximum(Emag, 1e-12)
-    ax3.quiver(Xq[::sk, ::sk], Yq[::sk, ::sk],
-               Ex[::sk, ::sk] / En[::sk, ::sk],
-               Ey[::sk, ::sk] / En[::sk, ::sk],
-               color='white', alpha=0.3, scale=3, width=0.003)
-
-    # Circulos fisicos + etiqueta de |E| en las 10 cargas con mayor campo
+    # Cargas + etiqueta de |E| en las 10 con mayor campo
     _dibujar_cargas(ax3, pos, q, radio=R_DIBUJO_PNG)
-    Es_all = np.array([E_en_carga(i, pos, q) for i in range(len(q))])
+    Es_all  = np.array([E_en_carga(i, pos, q) for i in range(len(q))])
     top10_E = np.argsort(Es_all)[-10:]
     for i in top10_E:
         xi, yi = pos[i]
@@ -1384,38 +1392,93 @@ def _leer_yn(prompt: str, default: bool = False) -> bool:
     return r == 's'
 
 
+def _generar_pos_fijas(n_pos: int, n_neg: int) -> tuple:
+    """
+    Distribuye n_pos y n_neg cargas en cuadrículas simétricas.
+    Cluster (+) centrado en x = -55, cluster (−) centrado en x = +55.
+    Para cargas de un solo tipo, el cluster se centra en x = 0.
+    El espaciado se adapta para respetar siempre R_MIN.
+    """
+    def _grid(n: int, xc: float) -> np.ndarray:
+        if n == 0:
+            return np.empty((0, 2), dtype=float)
+        cols = max(1, int(np.ceil(np.sqrt(n))))
+        rows = int(np.ceil(n / cols))
+        sp   = max(R_MIN + 1.5, min(14.0, 70.0 / max(cols, rows)))
+        xs   = np.linspace(xc - (cols - 1) * sp / 2,
+                           xc + (cols - 1) * sp / 2, cols)
+        ys   = np.linspace(-(rows - 1) * sp / 2,
+                            (rows - 1) * sp / 2, rows)
+        pts  = np.array([(x, y) for y in ys for x in xs], dtype=float)
+        pts[:, 0] = np.clip(pts[:, 0], DOMAIN[0] + R_CARGA, DOMAIN[1] - R_CARGA)
+        pts[:, 1] = np.clip(pts[:, 1], DOMAIN[0] + R_CARGA, DOMAIN[1] - R_CARGA)
+        return pts[:n]
+
+    if n_pos > 0 and n_neg > 0:
+        pp = _grid(n_pos, -55.0)
+        pn = _grid(n_neg, +55.0)
+    elif n_pos > 0:
+        pp = _grid(n_pos, 0.0)
+        pn = np.empty((0, 2), dtype=float)
+    else:
+        pp = np.empty((0, 2), dtype=float)
+        pn = _grid(n_neg, 0.0)
+
+    partes  = [a for a in [pp, pn] if len(a) > 0]
+    pos_all = np.vstack(partes) if partes else np.empty((0, 2), dtype=float)
+    q_all   = np.concatenate([np.ones(n_pos), -np.ones(n_neg)])
+    return pos_all, q_all
+
+
 def configurar_sistema_inicial() -> 'SistemaCargas':
-    """Crea el sistema con las coordenadas fijas de presentación."""
-    sistema = SistemaCargas(pos_ext=POS_FIJAS, q_ext=Q_FIJAS)
-    print(f"\n  {'═'*52}")
-    print("  SISTEMA DE PRESENTACION (coordenadas fijas)")
-    print(f"  {'═'*52}")
-    print(f"  {sistema.n_pos} cargas (+1) · cluster izquierdo  x ∈ [-90, -30]")
-    print(f"  {sistema.n_neg} cargas (−1) · cluster derecho   x ∈ [ 30,  90]")
-    print(f"  Total: {sistema.N} cargas  |  U inicial = {sistema.energia:+.4f} u.a.")
-    print(f"  {'═'*52}")
-    return sistema
-
-
-def configurar_sistema_aleatorio(n_pos: int = 25, n_neg: int = 25,
-                                  seed: int = None) -> 'SistemaCargas':
     """
-    Crea el sistema con posiciones iniciales ALEATORIAS.
-    Cumple con la especificacion del proyecto: 'posiciones iniciales aleatorias'.
-    Las cargas se colocan por muestreo de rechazo respetando R_MIN.
+    Configura el sistema inicial de forma interactiva.
+    Permite elegir: tipo de cargas, cantidad y modo de posicionamiento.
     """
-    if seed is None:
-        seed = np.random.randint(0, 10_000)
-    sistema = SistemaCargas(n_pos=n_pos, n_neg=n_neg, seed=seed)
-    print(f"\n  {'═'*52}")
-    print("  SISTEMA ALEATORIO (posiciones iniciales aleatorias)")
-    print(f"  {'═'*52}")
-    print(f"  Semilla: {seed}")
-    print(f"  {sistema.n_pos} cargas (+1)  +  {sistema.n_neg} cargas (−1)"
-          f"  =  {sistema.N} cargas")
-    print(f"  Dominio: [{DOMAIN[0]}, {DOMAIN[1]}]²")
-    print(f"  U inicial = {sistema.energia:+.4f} u.a.")
-    print(f"  {'═'*52}")
+    print(f"\n  {'═'*56}")
+    print("  CONFIGURACION DEL SISTEMA INICIAL")
+    print(f"  {'═'*56}")
+
+    # ── 1. Tipo de cargas ────────────────────────────────────────
+    print("\n  Tipo de cargas:")
+    print("    1. Solo positivas  (+1)")
+    print("    2. Mixtas          (positivas y negativas)")
+    tipo = _leer_int("Opcion", lo=1, hi=2, default=2)
+
+    # ── 2. Cantidad ──────────────────────────────────────────────
+    if tipo == 1:
+        n_pos = _leer_int("Numero de cargas positivas (+1)",
+                          lo=1, hi=MAX_CARGAS, default=25)
+        n_neg = 0
+    else:
+        n_pos = _leer_int("Numero de cargas positivas (+1)",
+                          lo=1, hi=MAX_CARGAS - 1, default=25)
+        n_neg = _leer_int("Numero de cargas negativas (-1)",
+                          lo=1, hi=MAX_CARGAS - n_pos, default=25)
+
+    # ── 3. Posicionamiento ───────────────────────────────────────
+    print("\n  Posicionamiento inicial:")
+    print("    1. Coordenadas fijas      (clusters simetricos en cuadricula)")
+    print("    2. Coordenadas aleatorias (distribucion aleatoria en el dominio)")
+    modo_pos = _leer_int("Opcion", lo=1, hi=2, default=1)
+
+    if modo_pos == 1:
+        pos_f, q_f = _generar_pos_fijas(n_pos, n_neg)
+        sistema    = SistemaCargas(pos_ext=pos_f, q_ext=q_f)
+        etiq_pos   = "fijas (clusters)"
+    else:
+        sistema  = SistemaCargas(n_pos=n_pos, n_neg=n_neg)
+        etiq_pos = "aleatorias"
+
+    lbl_tipo = "solo positivas" if tipo == 1 else "mixtas (+/−)"
+    print(f"\n  {'═'*56}")
+    print(f"  Tipo         : {lbl_tipo}")
+    print(f"  Cargas (+)   : {sistema.n_pos}")
+    print(f"  Cargas (−)   : {sistema.n_neg}")
+    print(f"  Total        : {sistema.N}  |  "
+          f"U inicial = {sistema.energia:+.4f} u.a.")
+    print(f"  Posiciones   : {etiq_pos}")
+    print(f"  {'═'*56}")
     return sistema
 
 
@@ -1559,18 +1622,10 @@ def main() -> None:
     print("  SIMULACION DE ENERGIA ELECTROSTATICA 2D")
     print("  Proyecto Electricidad y Magnetismo — Fisica III")
     print(f"  Algoritmo: Monte Carlo Greedy | k={K_E} | T=0 K")
-    print(f"  Dominio [-{int(L)},{int(L)}]^2 | 25(+) + 25(-) = 50 cargas | delta={DELTA}")
+    print(f"  Dominio [-{int(L)},{int(L)}]^2  |  delta={DELTA}")
     print("═"*56)
 
-    print("\n  Modo de inicializacion:")
-    print("  1. Coordenadas fijas de presentacion (clusters separados)")
-    print("  2. Posiciones iniciales ALEATORIAS (segun especificacion)")
-    modo_ini = _leer_int("Modo", lo=1, hi=2, default=2)
-    if modo_ini == 2:
-        seed_ini = _leer_int("Semilla aleatoria (0-9999)", lo=0, hi=9999, default=42)
-        sistema = configurar_sistema_aleatorio(seed=seed_ini)
-    else:
-        sistema = configurar_sistema_inicial()
+    sistema   = configurar_sistema_inicial()
     resultado = None
 
     while True:
@@ -1629,15 +1684,7 @@ def main() -> None:
         elif opc == 8:
             if _leer_yn("Reiniciar sistema (se perdera el estado actual)",
                          default=False):
-                print("  Modo de reinicio:")
-                print("  1. Coordenadas fijas de presentacion")
-                print("  2. Posiciones iniciales ALEATORIAS")
-                modo_r = _leer_int("Modo", lo=1, hi=2, default=2)
-                if modo_r == 2:
-                    seed_r = _leer_int("Semilla (0-9999)", lo=0, hi=9999, default=42)
-                    sistema = configurar_sistema_aleatorio(seed=seed_r)
-                else:
-                    sistema = configurar_sistema_inicial()
+                sistema   = configurar_sistema_inicial()
                 resultado = None
 
         elif opc == 9:
@@ -1647,3 +1694,4 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+    
